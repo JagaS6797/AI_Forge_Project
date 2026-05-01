@@ -1,0 +1,35 @@
+# Web framework
+fastapi
+uvicorn[standard]
+python-multipart
+
+# Config / validation
+pydantic
+pydantic-settings
+python-dotenv
+email-validator
+
+# Database (async PostgreSQL)
+sqlalchemy>=2.0
+asyncpg
+
+# Auth
+bcrypt
+python-jose[cryptography]
+google-auth
+
+# AI / LLM
+langchain
+langchain-core
+langchain-openai
+openai
+
+# HTTP client
+httpx
+
+# Dev / testing
+pytest
+pytest-asyncio
+pytest-cov
+ruff
+pre-commit
