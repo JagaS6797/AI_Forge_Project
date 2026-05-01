@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     app_name: str = "amzur-ai-chat"
     environment: str = "development"
     frontend_url: Optional[str] = None
+    chat_memory_conversations: int = 5
 
     # Database
     database_url: str
