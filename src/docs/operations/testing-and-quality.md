@@ -4,6 +4,11 @@
 
 Current quality tooling and recommended extension path for coverage.
 
+Detailed test case catalogs:
+
+- Backend: ../backend/test-cases.md
+- Frontend: ../frontend/test-cases.md
+
 ## Current Tooling
 
 ### Backend
@@ -39,6 +44,12 @@ Current quality tooling and recommended extension path for coverage.
    - ThreadSidebar rename/delete interactions.
 4. End-to-end smoke tests
    - login -> create thread -> send message -> verify stream completion.
+
+## Coverage Status
+
+- Backend comprehensive matrix documented in ../backend/test-cases.md.
+- Frontend comprehensive matrix documented in ../frontend/test-cases.md.
+- Matrices include positive, negative, edge, security, reliability, and performance scenarios.
 
 ## Quality Gates Proposal
 

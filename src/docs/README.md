@@ -23,9 +23,11 @@ This folder contains architecture-level and implementation-level technical docum
   - ATTACHMENTS_COMPLETE.md
   - rag-pdf-retrieval.md
   - image-generation.md
+  - test-cases.md
 - frontend/
   - frontend-overview.md
   - state-and-api-integration.md
+  - test-cases.md
 - flows/
   - 01-user-auth-flow.md
   - 02-thread-lifecycle-flow.md
