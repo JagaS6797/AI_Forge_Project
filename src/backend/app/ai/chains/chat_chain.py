@@ -15,7 +15,7 @@ def build_chat_chain():
             ),
             (
                 "human",
-                "Conversation history:\n{history}\n\nUser message:\n{message}",
+                "Conversation history:\n{history}\n\n{attachments}\n\nUser message:\n{message}",
             ),
         ]
     )

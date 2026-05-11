@@ -1,3 +1,7 @@
+export type { AttachmentMetadata, AttachmentType, ChatAttachment, FileUploadResponse } from "./attachment";
+export type { PdfUploadResponse, PdfProcessingStatus } from "./rag";
+import type { ChatAttachment } from "./attachment";
+
 export type ChatRole = "user" | "assistant";
 
 export type ChatApiMessage = {
@@ -8,10 +12,13 @@ export type ChatApiMessage = {
 export type ChatRequest = {
 	message: string;
 	thread_id: string;
+	attachment_ids?: string[];
 };
 
 export type ChatUiMessage = ChatApiMessage & {
 	id: string;
+	attachment_ids?: string[];
+	attachments?: ChatAttachment[];
 };
 
 export type AuthUser = {
@@ -28,6 +35,7 @@ export type ChatHistoryMessage = {
 	id: string;
 	role: ChatRole;
 	content: string;
+	attachment_ids?: string[];
 	created_at: string;
 };
 
@@ -36,7 +44,4 @@ export type ChatThread = {
 	name: string;
 	created_at: string;
 	updated_at: string;
-};
-
-	created_at: string;
 };

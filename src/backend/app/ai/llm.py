@@ -2,6 +2,7 @@ from typing import Any
 
 from app.core.config import settings
 from langchain_openai import ChatOpenAI
+from openai import AsyncOpenAI
 
 # AI clients should be initialized here and imported elsewhere.
 # Keep this file as the single gateway for LLM and embedding clients.
@@ -29,4 +30,11 @@ chat_llm = ChatOpenAI(
     extra_body=_extra_body,
 )
 
-__all__ = ["chat_llm"]
+image_client = AsyncOpenAI(
+    base_url=settings.litellm_proxy_url,
+    api_key=settings.litellm_api_key,
+    timeout=90,
+    max_retries=2,
+)
+
+__all__ = ["chat_llm", "image_client"]

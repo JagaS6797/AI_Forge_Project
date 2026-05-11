@@ -2,7 +2,10 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000
 
 import type {
   AuthUser,
+  ChatAttachment,
+  FileUploadResponse,
   ChatHistoryMessage,
+  PdfUploadResponse,
   ChatThread,
   LoginResponse,
 } from "../types";
@@ -125,18 +128,27 @@ export async function getThreadMessages(threadId: string): Promise<ChatHistoryMe
 
 type TokenHandler = (token: string) => void;
 type ThreadNameHandler = (name: string) => void;
+type AttachmentHandler = (attachment: ChatAttachment) => void;
 
 export async function sendMessage(
   message: string,
   threadId: string,
+  attachmentIds: string[] = [],
+  ragEnabled = false,
   onToken?: TokenHandler,
   onThreadName?: ThreadNameHandler,
+  onAttachment?: AttachmentHandler,
 ): Promise<void> {
   const response = await fetch(`${API_BASE_URL}/api/chat`, {
     method: "POST",
     credentials: "include",
     headers: withAuthHeaders({ "Content-Type": "application/json" }),
-    body: JSON.stringify({ message, thread_id: threadId }),
+    body: JSON.stringify({ 
+      message, 
+      thread_id: threadId,
+      attachment_ids: attachmentIds,
+      rag_enabled: ragEnabled,
+    }),
   });
 
   if (!response.ok || !response.body) {
@@ -167,12 +179,98 @@ export async function sendMessage(
       const parsed = JSON.parse(jsonPayload) as {
         token?: string;
         thread_name?: string;
+        attachment?: ChatAttachment;
         done?: boolean;
+        event?: string;
       };
 
       if (parsed.done) return;
+      if (parsed.event === "rag_fallback") {
+        document.dispatchEvent(new CustomEvent("ragFallback"));
+      }
       if (parsed.thread_name && onThreadName) onThreadName(parsed.thread_name);
       if (parsed.token && onToken) onToken(parsed.token);
+      if (parsed.attachment && onAttachment) onAttachment(parsed.attachment);
     }
   }
+}
+
+// ── Attachments ────────────────────────────────────────────────────────────
+
+export async function uploadAttachments(formData: FormData): Promise<FileUploadResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/upload`, {
+    method: "POST",
+    credentials: "include",
+    headers: withAuthHeaders({}),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `Upload failed with status ${response.status}`;
+    try {
+      const body = await response.json() as { detail?: { message?: string } | string };
+      if (typeof body.detail === "object" && body.detail?.message) {
+        detail = body.detail.message;
+      } else if (typeof body.detail === "string") {
+        detail = body.detail;
+      }
+    } catch { /* ignore parse errors */ }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as FileUploadResponse;
+}
+
+export async function uploadPdf(threadId: string, file: File): Promise<PdfUploadResponse> {
+  const formData = new FormData();
+  formData.append("thread_id", threadId);
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/api/chat/upload-pdf`, {
+    method: "POST",
+    credentials: "include",
+    headers: withAuthHeaders({}),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `PDF upload failed with status ${response.status}`;
+    try {
+      const body = await response.json() as { detail?: { message?: string } | string };
+      if (typeof body.detail === "object" && body.detail?.message) {
+        detail = body.detail.message;
+      } else if (typeof body.detail === "string") {
+        detail = body.detail;
+      }
+    } catch {
+      // ignore parse errors
+    }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as PdfUploadResponse;
+}
+
+export async function askPdfQuestion(
+  question: string,
+  threadId: string,
+  onToken?: TokenHandler,
+  onThreadName?: ThreadNameHandler,
+  onAttachment?: AttachmentHandler,
+): Promise<void> {
+  await sendMessage(question, threadId, [], true, onToken, onThreadName, onAttachment);
+}
+
+export async function downloadAttachment(attachmentId: string): Promise<Blob> {
+  const response = await fetch(`${API_BASE_URL}/api/chat/attachments/${attachmentId}`, {
+    method: "GET",
+    credentials: "include",
+    headers: withAuthHeaders({}),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+
+  return response.blob();
 }

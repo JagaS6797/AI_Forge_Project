@@ -13,11 +13,16 @@ This folder contains architecture-level and implementation-level technical docum
 - architecture/
   - system-overview.md
   - data-model.md
+  - ai-capabilities.md
 - backend/
   - backend-overview.md
   - authentication.md
   - chat-streaming-memory.md
   - threads.md
+  - attachments.md
+  - ATTACHMENTS_COMPLETE.md
+  - rag-pdf-retrieval.md
+  - image-generation.md
 - frontend/
   - frontend-overview.md
   - state-and-api-integration.md
@@ -25,10 +30,19 @@ This folder contains architecture-level and implementation-level technical docum
   - 01-user-auth-flow.md
   - 02-thread-lifecycle-flow.md
   - 03-chat-streaming-flow.md
+  - 04-pdf-rag-ingestion-and-query-flow.md
+  - 05-image-generation-flow.md
 - operations/
   - local-development.md
   - configuration-reference.md
   - testing-and-quality.md
+  - api-endpoints-reference.md
+  - attachment-fixes-history.md
+  - production-readiness.md
+  - history/
+    - attachment-fixes-applied.md
+    - image-viewing-fix-notes.md
+    - attachment-implementation-summary.md
 - roadmap/
   - enhancement-guide.md
 - templates/

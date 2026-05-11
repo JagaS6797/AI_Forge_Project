@@ -36,4 +36,23 @@ async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
 
 async def init_db() -> None:
     async with engine.begin() as conn:
+        # First create all tables
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Migrate existing chat_messages table to add attachment_ids column if missing
+        from sqlalchemy import text
+        try:
+            # Try to add the column if it doesn't exist
+            await conn.execute(
+                text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS attachment_ids JSON DEFAULT '[]'::json NOT NULL")
+            )
+        except Exception:
+            # If error, it likely already exists - continue anyway
+            pass
+
+        try:
+            await conn.execute(
+                text("ALTER TABLE file_attachments ADD COLUMN IF NOT EXISTS attachment_type VARCHAR(32) DEFAULT 'file' NOT NULL")
+            )
+        except Exception:
+            pass

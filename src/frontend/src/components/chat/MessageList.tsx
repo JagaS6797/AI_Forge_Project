@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { ChatUiMessage } from "../../types";
+import { MessageAttachments } from "./MessageAttachments";
 
 type MessageListProps = {
   messages: ChatUiMessage[];
@@ -56,6 +57,14 @@ export function MessageList({ messages, isStreaming = false }: MessageListProps)
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:300ms]" />
                   </span>
                 ) : null
+              )}
+              
+              {/* Display attachments if present */}
+              {message.attachments && message.attachments.length > 0 && (
+                <MessageAttachments
+                  attachments={message.attachments}
+                  messageRole={message.role}
+                />
               )}
             </div>
           </div>

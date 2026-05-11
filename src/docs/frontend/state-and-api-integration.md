@@ -24,7 +24,16 @@ How frontend state is synchronized with backend APIs and SSE streaming responses
 - ChatWindow fetches existing thread messages on thread switch.
 - sendMessage appends local optimistic user + assistant placeholder messages.
 - SSE token events append text into assistant placeholder.
+- SSE attachment events append generated attachment metadata to assistant message.
 - SSE done terminates stream processing.
+- RAG fallback event disables ragEnabled state for current thread session.
+
+### Mode-Driven Input State
+
+- InputBar supports modes: normal, upload, upload_pdf_rag, generate_image.
+- Upload modes dispatch selected files to useAttachments hook via custom event.
+- PDF mode enables per-thread RAG toggle only after upload/indexing reaches ready state.
+- Generate-image mode normalizes plain text prompts to /image command form before send.
 
 ## Step-by-Step Streaming State Flow
 

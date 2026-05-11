@@ -20,6 +20,10 @@ FastAPI backend architecture, responsibilities by layer, and runtime behavior.
 - /api/chat
   - stream chat responses
   - list user history (legacy endpoint)
+  - upload generic attachments
+  - upload PDF for RAG indexing
+  - download attachments
+  - view image attachments
 - /api/threads
   - list/create/rename/delete threads
   - list messages by thread
@@ -35,6 +39,7 @@ FastAPI backend architecture, responsibilities by layer, and runtime behavior.
 - Routers are thin and delegate business logic to services.
 - Services isolate DB operations and error handling.
 - Thread naming and chat memory slicing are implemented in services.
+- RAG indexing/retrieval and image generation are handled in dedicated services.
 
 ## Error Handling Strategy
 
