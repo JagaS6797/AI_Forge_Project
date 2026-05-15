@@ -1,6 +1,7 @@
 export type { AttachmentMetadata, AttachmentType, ChatAttachment, FileUploadResponse } from "./attachment";
 export type { PdfUploadResponse, PdfProcessingStatus } from "./rag";
 export type { SqlQueryResult } from "./sql";
+export type { DataFrameQueryResult } from "./dataframe";
 import type { ChatAttachment } from "./attachment";
 
 export type ChatRole = "user" | "assistant";

@@ -1,0 +1,21 @@
+Date,Customer,Product,Category,Region,Quantity,Unit_Price,Total_Sales,Payment_Method,Order_Status
+03-01-2026,Alice Johnson,Laptop,Electronics,North,1,1200,1200,Card,Delivered
+05-01-2026,Bob Smith,Headphones,Electronics,South,3,80,240,UPI,Delivered
+09-01-2026,Carol White,Office Chair,Furniture,East,2,150,300,Cash,Delivered
+12-01-2026,David Lee,Keyboard,Electronics,West,4,45,180,Card,Delivered
+16-01-2026,Emma Davis,Standing Desk,Furniture,North,1,420,420,UPI,Pending
+21-01-2026,Frank Brown,Monitor,Electronics,South,2,220,440,Card,Delivered
+25-01-2026,Grace Kim,Notebook,Stationery,East,10,6,60,Cash,Delivered
+01-02-2026,Henry Clark,Mouse,Electronics,West,5,25,125,UPI,Delivered
+06-02-2026,Ivy Wilson,Printer,Electronics,North,1,310,310,Card,Returned
+11-02-2026,Jack Miller,Bookshelf,Furniture,South,1,190,190,Cash,Delivered
+14-02-2026,Karen Young,Pen Pack,Stationery,East,12,3,36,UPI,Delivered
+18-02-2026,Liam Scott,Laptop,Electronics,West,2,1150,2300,Card,Delivered
+22-02-2026,Mia Turner,Desk Lamp,Furniture,North,3,35,105,UPI,Pending
+27-02-2026,Noah Walker,Headphones,Electronics,South,2,90,180,Card,Delivered
+03-03-2026,Olivia Hall,Whiteboard,Stationery,East,1,75,75,Cash,Delivered
+08-03-2026,Paul Allen,Monitor,Electronics,West,1,240,240,UPI,Delivered
+12-03-2026,Quinn Adams,Office Chair,Furniture,North,1,165,165,Card,Delivered
+16-03-2026,Ruby Green,Keyboard,Electronics,South,6,40,240,Cash,Delivered
+21-03-2026,Sam Carter,Mouse,Electronics,East,8,22,176,UPI,Delivered
+27-03-2026,Tina Brooks,Standing Desk,Furniture,West,1,450,450,Card,Pending

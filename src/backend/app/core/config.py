@@ -45,5 +45,10 @@ class Settings(BaseSettings):
     nl2sql_max_rows: int = 100
     nl2sql_schema: str = "public"
 
+    # Project 9: CSV/Google Sheets
+    google_sheets_spreadsheet_id: Optional[str] = None
+    csv_upload_dir: str = "./csv_uploads"
+    dataframe_agent_max_iterations: int = 10
+
 
 settings = Settings()

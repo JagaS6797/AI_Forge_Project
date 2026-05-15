@@ -25,13 +25,25 @@ langchain-openai
 langchain-text-splitters>=1.1.2
 langchain-chroma>=0.1.4
 langchain-community>=0.3.0
+langchain-experimental>=0.0.50
 chromadb>=0.5.5
 pypdf>=4.2.0
 openai
 
+# Data processing
+pandas
+tabulate
+gspread
+openpyxl
+
+# Google integration
+google-sheets-client
+google-api-python-client
+google-auth-httplib2
+google-auth-oauthlib
+
 # HTTP client
 httpx
-openpyxl
 
 # Dev / testing
 pytest

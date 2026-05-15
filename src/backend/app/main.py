@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
+from app.api.dataframe_query import router as dataframe_query_router
 from app.api.sql_query import router as sql_query_router
 from app.api.threads import router as thread_router
 from app.core.config import settings
@@ -45,3 +46,4 @@ app.include_router(auth_router)
 app.include_router(chat_router)
 app.include_router(thread_router)
 app.include_router(sql_query_router)
+app.include_router(dataframe_query_router)

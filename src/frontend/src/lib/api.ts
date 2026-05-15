@@ -9,6 +9,7 @@ import type {
   ChatThread,
   LoginResponse,
   SqlQueryResult,
+  DataFrameQueryResult,
 } from "../types";
 
 const AUTH_TOKEN_KEY = "amzur_chat_access_token";
@@ -286,4 +287,48 @@ export async function askDatabaseQuestion(
     method: "POST",
     body: JSON.stringify({ question, max_rows: maxRows }),
   });
+}
+
+// -- Project 9: CSV/Google Sheets ---------------------------------------------------
+
+export async function queryDataFrameWithNL(
+  question: string,
+  useGoogleSheets = true,
+  csvFileId: string | null = null,
+): Promise<DataFrameQueryResult> {
+  return apiRequest<DataFrameQueryResult>("/api/dataframe/query", {
+    method: "POST",
+    body: JSON.stringify({
+      question,
+      use_google_sheets: useGoogleSheets,
+      csv_file_id: csvFileId,
+    }),
+  });
+}
+
+export async function uploadCsvFile(file: File): Promise<{ file_id: string; file_name: string; size: number }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE_URL}/api/dataframe/upload-csv`, {
+    method: "POST",
+    credentials: "include",
+    headers: withAuthHeaders({}),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let detail = `CSV upload failed with status ${response.status}`;
+    try {
+      const body = await response.json() as { detail?: { message?: string } | string };
+      if (typeof body.detail === "object" && body.detail?.message) {
+        detail = body.detail.message;
+      } else if (typeof body.detail === "string") {
+        detail = body.detail;
+      }
+    } catch { /* ignore parse errors */ }
+    throw new Error(detail);
+  }
+
+  return (await response.json()) as { file_id: string; file_name: string; size: number };
 }

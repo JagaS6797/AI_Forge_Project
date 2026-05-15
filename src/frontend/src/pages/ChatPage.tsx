@@ -21,7 +21,11 @@ type Screen = "login" | "register" | "chat";
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 
-export default function ChatPage() {
+type ChatPageProps = {
+  onAuthStateChange?: (isAuthenticated: boolean) => void;
+};
+
+export default function ChatPage({ onAuthStateChange }: ChatPageProps) {
   const [screen, setScreen] = useState<Screen>("login");
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +47,7 @@ export default function ChatPage() {
 
   const afterLogin = async (response: Awaited<ReturnType<typeof login>>) => {
     setAuthToken(response.access_token);
+    onAuthStateChange?.(true);
     setUser(response.user);
     const data = await loadThreads();
     if (data.length > 0) setActiveThreadId(data[0].id);
@@ -52,15 +57,21 @@ export default function ChatPage() {
   useEffect(() => {
     const bootstrap = async () => {
       const token = getAuthToken();
-      if (!token) { setIsLoading(false); return; }
+      if (!token) {
+        onAuthStateChange?.(false);
+        setIsLoading(false);
+        return;
+      }
       try {
         const currentUser = await getCurrentUser();
+        onAuthStateChange?.(true);
         setUser(currentUser);
         const data = await loadThreads();
         if (data.length > 0) setActiveThreadId(data[0].id);
         setScreen("chat");
       } catch {
         clearAuthToken();
+        onAuthStateChange?.(false);
       } finally {
         setIsLoading(false);
       }
@@ -124,6 +135,7 @@ export default function ChatPage() {
 
   const handleLogout = () => {
     clearAuthToken();
+    onAuthStateChange?.(false);
     setUser(null);
     setThreads([]);
     setActiveThreadId(null);
