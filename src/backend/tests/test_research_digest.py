@@ -13,6 +13,7 @@ from app.api.research_digest import router
 from app.services.research_digest_service import (
     _extract_mcp_payload,
     _is_live_sports_query,
+    _normalize_research_topic,
     _paper_dict_to_schema,
     _paper_to_schema,
     _parse_mcp_payload_text,
@@ -31,10 +32,15 @@ class TestResearchDigestSchemas:
     def test_request_default_max_papers(self):
         req = ResearchDigestRequest(topic="test")
         assert req.max_papers == 5
+        assert req.use_mcp is True
 
     def test_request_custom_max_papers(self):
         req = ResearchDigestRequest(topic="test", max_papers=3)
         assert req.max_papers == 3
+
+    def test_request_custom_use_mcp(self):
+        req = ResearchDigestRequest(topic="test", use_mcp=False)
+        assert req.use_mcp is False
 
     def test_research_paper_model(self):
         paper = ResearchPaper(
@@ -89,6 +95,14 @@ class TestResearchDigestSchemas:
     def test_request_missing_topic_raises(self):
         with pytest.raises(Exception):
             ResearchDigestRequest()  # type: ignore[call-arg]
+
+    def test_normalize_research_topic_from_prompt_sentence(self):
+        topic = _normalize_research_topic("Give me a research digest on transformers in healthcare")
+        assert topic == "transformers in healthcare"
+
+    def test_normalize_research_topic_keeps_plain_topic(self):
+        topic = _normalize_research_topic("multimodal llms for radiology")
+        assert topic == "multimodal llms for radiology"
 
 
 # ── SSE helper tests ──────────────────────────────────────────────────────────
@@ -170,15 +184,17 @@ class TestResearchDigestService:
 
     @pytest.mark.asyncio
     async def test_stream_no_results_yields_error(self):
-        """If arXiv returns 0 papers, service yields an error event."""
+        """If MCP and direct arXiv both return 0 papers, service yields an error event."""
         import app.services.research_digest_service as svc
 
         original = svc._search_papers_via_mcp
+        original_direct = svc._search_papers_via_arxiv
 
         async def mock_no_results(*args, **kwargs):
             return []
 
         svc._search_papers_via_mcp = mock_no_results  # type: ignore[assignment]
+        svc._search_papers_via_arxiv = mock_no_results  # type: ignore[assignment]
         try:
             chunks = []
             async for chunk in stream_research_digest(topic="xyzzy obscure topic 12345", max_papers=3):
@@ -187,9 +203,52 @@ class TestResearchDigestService:
                     break
         finally:
             svc._search_papers_via_mcp = original  # type: ignore[assignment]
+            svc._search_papers_via_arxiv = original_direct  # type: ignore[assignment]
 
         combined = "".join(chunks)
         assert "event: error" in combined
+
+    @pytest.mark.asyncio
+    async def test_stream_toggle_off_uses_direct_arxiv_search(self):
+        import app.services.research_digest_service as svc
+
+        original_direct = svc._search_papers_via_arxiv
+        original_mcp = svc._search_papers_via_mcp
+        original_select = svc._select_relevant_papers
+
+        async def mock_direct_search(*args, **kwargs):
+            return [
+                ResearchPaper(
+                    title="Direct arXiv Paper",
+                    authors=["A. Author"],
+                    published="2024-01-01",
+                    summary="Direct search path result.",
+                    url="https://arxiv.org/abs/2401.00001",
+                )
+            ]
+
+        async def mock_mcp_search(*args, **kwargs):
+            raise AssertionError("MCP search should not be called when use_mcp=False")
+
+        async def mock_select(topic: str, papers: list[ResearchPaper], max_papers: int):
+            return papers[:max_papers]
+
+        svc._search_papers_via_arxiv = mock_direct_search  # type: ignore[assignment]
+        svc._search_papers_via_mcp = mock_mcp_search  # type: ignore[assignment]
+        svc._select_relevant_papers = mock_select  # type: ignore[assignment]
+        try:
+            chunks = []
+            async for chunk in stream_research_digest(topic="test topic", max_papers=1, use_mcp=False):
+                chunks.append(chunk)
+                if "event: selected_papers" in chunk:
+                    break
+        finally:
+            svc._search_papers_via_arxiv = original_direct  # type: ignore[assignment]
+            svc._search_papers_via_mcp = original_mcp  # type: ignore[assignment]
+            svc._select_relevant_papers = original_select  # type: ignore[assignment]
+
+        combined = "".join(chunks)
+        assert "event: selected_papers" in combined
 
     @pytest.mark.asyncio
     async def test_stream_live_sports_query_yields_done(self):

@@ -108,6 +108,25 @@ View image attachment with image/* media type.
 - Status: 200 OK
 - Auth: Required
 
+## Research Endpoints
+
+### POST /api/research/digest
+Stream a structured research digest.
+- Request: `{ topic: string, max_papers?: number, use_mcp?: boolean }`
+- Response: Server-Sent Events (text/event-stream)
+  - `event: status` with `{ message, step }`
+  - `event: papers_found` with `{ count, message, step }`
+  - `event: selected_papers` with `{ papers, message, step }`
+  - `event: digest_chunk` with `{ token }`
+  - `event: done` with `{ topic, papers_found, digest, key_papers, generated_at, step }`
+  - `event: error` with `{ message }`
+- Status: 200 OK
+- Auth: Required
+- Notes:
+  - `use_mcp=true` (default): use MCP arXiv tool path first.
+  - If MCP fails or returns no usable papers, backend retries using direct arXiv search.
+  - `use_mcp=false`: force direct arXiv search path.
+
 ## Error Response Format
 
 All endpoints return consistent error format:

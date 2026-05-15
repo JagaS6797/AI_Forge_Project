@@ -115,6 +115,23 @@ Comprehensive backend test matrix for auth, threads, chat streaming, attachments
 - BE-IMG-005: Provider returns no payload -> graceful error token + done.
 - BE-IMG-006: Provider URL download failure -> graceful error token + done.
 
+### I2. Research Digest and MCP Orchestration
+
+- BE-RSCH-001: Research digest stream emits status -> papers_found -> selected_papers -> digest_chunk -> done.
+- BE-RSCH-002: No MCP papers returned emits error event with no-papers message.
+- BE-RSCH-003: MCP payload with wrapped JSON text is parsed successfully.
+- BE-RSCH-004: Empty/non-JSON MCP text does not crash stream; parser fails safely.
+- BE-RSCH-005: LangGraph search/select path returns selected papers bounded by max_papers.
+- BE-RSCH-006: Selection fallback returns top papers when LLM selection parsing fails.
+- BE-RSCH-007: Sports query path bypasses research flow and returns live fixture digest events.
+
+### I3. Tic Tac Toe Agent
+
+- BE-TTT-001: Start new game returns valid initial board and symbols.
+- BE-TTT-002: Valid user move returns updated board and next agent/user turn.
+- BE-TTT-003: Winning line is returned when user or agent wins.
+- BE-TTT-004: Draw state is returned when board is full without winner.
+
 ### J. Data Integrity and Cascades
 
 - BE-DB-001: Deleting thread cascades chat_messages in that thread.

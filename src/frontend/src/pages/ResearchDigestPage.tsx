@@ -78,6 +78,7 @@ function parseDigestSections(markdown: string): DigestSection[] {
 export default function ResearchDigestPage() {
   const [topic, setTopic] = useState("");
   const [maxPapers, setMaxPapers] = useState(5);
+  const [useMcp, setUseMcp] = useState(true);
   const [phase, setPhase] = useState<Phase>("idle");
   const [statusMessages, setStatusMessages] = useState<StatusMessage[]>([]);
   const [streamedDigest, setStreamedDigest] = useState("");
@@ -117,6 +118,7 @@ export default function ResearchDigestPage() {
       await streamResearchDigest(
         topic.trim(),
         maxPapers,
+        useMcp,
         (eventName, data) => {
           switch (eventName) {
             case "status": {
@@ -131,7 +133,8 @@ export default function ResearchDigestPage() {
             case "papers_found":
               addStatus(data.step as number, data.message as string);
               break;
-            case "selected_papers": {
+            case "selected_papers":
+            case "papers_selected": {
               const papers = (data.papers as ResearchPaper[]) ?? [];
               setSelectedPapers(papers);
               addStatus(data.step as number, data.message as string);
@@ -144,6 +147,10 @@ export default function ResearchDigestPage() {
               const payload = data as unknown as ResearchDigestDonePayload;
               setFinalResult(payload);
               setStreamedDigest(payload.digest);
+              setSelectedPapers((prev) => {
+                if (prev.length > 0) return prev;
+                return payload.key_papers ?? [];
+              });
               setPhase("done");
               break;
             }
@@ -161,7 +168,7 @@ export default function ResearchDigestPage() {
         setPhase("error");
       }
     }
-  }, [topic, maxPapers, addStatus]);
+  }, [topic, maxPapers, useMcp, addStatus]);
 
   const handleStop = () => {
     abortRef.current?.abort();
@@ -172,6 +179,7 @@ export default function ResearchDigestPage() {
     abortRef.current?.abort();
     setTopic("");
     setMaxPapers(5);
+    setUseMcp(true);
     setPhase("idle");
     setStatusMessages([]);
     setStreamedDigest("");
@@ -235,6 +243,31 @@ export default function ResearchDigestPage() {
                   <option key={n} value={n}>{n}</option>
                 ))}
               </select>
+            </div>
+            <div className="flex-shrink-0">
+              <div className="inline-flex items-center gap-2 rounded-xl border border-violet-300 bg-white px-4 py-2.5 text-sm shadow">
+                <span className="font-semibold text-violet-700">MCP</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={useMcp}
+                  aria-label="Toggle MCP"
+                  onClick={() => setUseMcp((prev) => !prev)}
+                  disabled={isRunning}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition disabled:opacity-50 ${
+                    useMcp
+                      ? "bg-violet-600"
+                      : "bg-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                      useMcp ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+                <span className="font-semibold text-violet-700">{useMcp ? "On" : "Off"}</span>
+              </div>
             </div>
             <div className="flex gap-2">
               {isRunning ? (

@@ -17,7 +17,11 @@ async def research_digest_endpoint(
 ) -> StreamingResponse:
     """Stream a structured research digest for a given topic via SSE."""
     return StreamingResponse(
-        stream_research_digest(topic=payload.topic, max_papers=payload.max_papers),
+        stream_research_digest(
+            topic=payload.topic,
+            max_papers=payload.max_papers,
+            use_mcp=payload.use_mcp,
+        ),
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )

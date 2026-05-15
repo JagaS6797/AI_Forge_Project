@@ -19,6 +19,12 @@ How frontend state is synchronized with backend APIs and SSE streaming responses
 - renameThread maps and replaces thread object in state.
 - deleteThread removes thread and reselects fallback thread.
 
+### Module Shell State
+
+- App-level state controls active module view (chat, NL-SQL, DataFrame, Research, Tic Tac Toe).
+- Chat submodule panel is rendered only when active module is chat.
+- Header state shows authenticated user initials and exposes logout action.
+
 ### Chat State
 
 - ChatWindow fetches existing thread messages on thread switch.
@@ -27,6 +33,24 @@ How frontend state is synchronized with backend APIs and SSE streaming responses
 - SSE attachment events append generated attachment metadata to assistant message.
 - SSE done terminates stream processing.
 - RAG fallback event disables ragEnabled state for current thread session.
+
+### Research Digest Streaming State
+
+- streamResearchDigest posts topic, max_papers, and use_mcp to backend research endpoint.
+- Research page exposes a simple ON/OFF MCP toggle:
+  - On: MCP-first search path
+  - Off: direct arXiv search path
+- SSE event parsing handles:
+	- status
+	- papers_found
+	- selected_papers
+	- papers_selected (compat alias)
+	- digest_chunk
+	- done
+	- error
+- UI phase is derived from status step progression (searching, evaluating, generating, done/error).
+- Selected papers and digest body are updated incrementally from stream events.
+- If selected-papers event is missing, UI backfills cards from done.key_papers.
 
 ### Mode-Driven Input State
 

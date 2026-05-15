@@ -313,6 +313,7 @@ export async function queryDataFrameWithNL(
 export function streamResearchDigest(
   topic: string,
   maxPapers = 5,
+  useMcp = true,
   onEvent: (eventName: string, data: Record<string, unknown>) => void,
   signal?: AbortSignal,
 ): Promise<void> {
@@ -321,7 +322,7 @@ export function streamResearchDigest(
       method: "POST",
       credentials: "include",
       headers: withAuthHeaders({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ topic, max_papers: maxPapers }),
+      body: JSON.stringify({ topic, max_papers: maxPapers, use_mcp: useMcp }),
       signal,
     })
       .then(async (response) => {

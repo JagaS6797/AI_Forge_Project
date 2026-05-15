@@ -18,6 +18,7 @@ export type ResearchEventType =
   | "status"
   | "papers_found"
   | "selected_papers"
+  | "papers_selected"
   | "digest_chunk"
   | "done"
   | "error";

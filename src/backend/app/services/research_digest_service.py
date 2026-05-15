@@ -7,6 +7,7 @@ import re
 from datetime import datetime, timezone
 from typing import AsyncIterator, Any, TypedDict
 
+import arxiv
 from mcp import ClientSession
 from mcp.client.stdio import stdio_client
 import requests
@@ -27,6 +28,17 @@ _LIVE_SPORTS_KEYWORDS = (
     "today's match",
     "teams are participating",
     "who is playing",
+)
+
+_RESEARCH_PROMPT_PREFIXES = (
+    "give me a research digest on",
+    "create a research digest on",
+    "generate a research digest on",
+    "research digest on",
+    "give me research on",
+    "summarize research on",
+    "summarise research on",
+    "what does research say about",
 )
 
 
@@ -109,6 +121,20 @@ def _parse_mcp_payload_text(payload_text: str) -> dict[str, Any]:
     return _coerce_mcp_payload(parsed)
 
 
+def _normalize_research_topic(topic: str) -> str:
+    normalized = re.sub(r"\s+", " ", topic).strip()
+    lowered = normalized.lower()
+
+    for prefix in _RESEARCH_PROMPT_PREFIXES:
+        if lowered.startswith(prefix):
+            normalized = normalized[len(prefix):].strip(" :.-")
+            break
+
+    # Remove trailing punctuation that usually comes from conversational prompts.
+    normalized = normalized.rstrip("?.!").strip()
+    return normalized or topic.strip()
+
+
 def _extract_mcp_payload(result: Any) -> dict[str, Any]:
     content = getattr(result, "content", None) or []
     text_chunks = [item.text.strip() for item in content if getattr(item, "text", "").strip()]
@@ -161,6 +187,19 @@ async def _search_papers_via_mcp(topic: str, max_results: int) -> list[ResearchP
     payload = _extract_mcp_payload(result)
     papers = payload.get("papers", [])
     return [_paper_dict_to_schema(paper) for paper in papers]
+
+
+async def _search_papers_via_arxiv(topic: str, max_results: int) -> list[ResearchPaper]:
+    def _run_search() -> list[ResearchPaper]:
+        client = arxiv.Client()
+        search = arxiv.Search(
+            query=topic,
+            max_results=max_results,
+            sort_by=arxiv.SortCriterion.Relevance,
+        )
+        return [_paper_to_schema(result) for result in client.results(search)]
+
+    return await asyncio.to_thread(_run_search)
 
 
 async def _select_relevant_papers(topic: str, papers: list[ResearchPaper], max_papers: int) -> list[ResearchPaper]:
@@ -338,32 +377,79 @@ async def _stream_live_ipl_digest(topic: str) -> AsyncIterator[str]:
 
 # ── main streaming generator ─────────────────────────────────────────────────
 
-async def stream_research_digest(topic: str, max_papers: int = 5) -> AsyncIterator[str]:
+async def stream_research_digest(topic: str, max_papers: int = 5, use_mcp: bool = True) -> AsyncIterator[str]:
     """
     Streaming generator that:
       1. Searches arXiv for relevant papers
       2. Decides (via LLM) whether it has enough evidence
       3. Streams a structured research digest as SSE events
+            4. Uses MCP search when enabled, otherwise falls back to direct arXiv search
     """
     if _is_live_sports_query(topic):
         async for event in _stream_live_ipl_digest(topic):
             yield event
         return
 
-    yield _sse("status", {"message": f"Searching arXiv for: {topic}…", "step": 1})
+    search_topic = _normalize_research_topic(topic)
+
+    yield _sse("status", {"message": f"Searching arXiv for: {search_topic}…", "step": 1})
 
     # ── Step 1-2: LangGraph orchestrates MCP search + relevance selection ───
-    try:
-        graph_state = await _RESEARCH_GRAPH.ainvoke({"topic": topic, "max_papers": max_papers})
-    except Exception as exc:
-        logger.exception("arXiv MCP search failed")
-        yield _sse("error", {"message": f"arXiv MCP search failed: {exc}"})
-        return
+    graph_state: dict[str, Any] = {}
+
+    if use_mcp:
+        try:
+            graph_state = await _RESEARCH_GRAPH.ainvoke({"topic": search_topic, "max_papers": max_papers})
+        except Exception as exc:
+            logger.exception("arXiv MCP search failed")
+            yield _sse("status", {"message": "MCP search failed. Falling back to direct arXiv search...", "step": 2})
+            try:
+                papers = await _search_papers_via_arxiv(search_topic, max_papers + 3)
+            except Exception as fallback_exc:
+                logger.exception("Direct arXiv fallback search failed")
+                yield _sse("error", {"message": f"Research search failed (MCP and fallback): {fallback_exc}"})
+                return
+
+            selected_papers = await _select_relevant_papers(search_topic, papers, max_papers)
+            graph_state = {
+                "topic": search_topic,
+                "max_papers": max_papers,
+                "papers": papers,
+                "selected_papers": selected_papers,
+            }
+    else:
+        try:
+            papers = await _search_papers_via_arxiv(search_topic, max_papers + 3)
+        except Exception as exc:
+            logger.exception("Direct arXiv search failed")
+            yield _sse("error", {"message": f"Direct arXiv search failed: {exc}"})
+            return
+
+        selected_papers = await _select_relevant_papers(search_topic, papers, max_papers)
+        graph_state = {
+            "topic": search_topic,
+            "max_papers": max_papers,
+            "papers": papers,
+            "selected_papers": selected_papers,
+        }
 
     papers = graph_state.get("papers", [])
 
     if not papers:
-        yield _sse("error", {"message": f"No papers found on arXiv for topic: {topic!r}"})
+        if use_mcp:
+            # Handle no-results or rate-limited MCP responses by retrying direct arXiv once.
+            yield _sse("status", {"message": "No MCP papers returned. Retrying with direct arXiv search...", "step": 2})
+            try:
+                papers = await _search_papers_via_arxiv(search_topic, max_papers + 3)
+            except Exception as fallback_exc:
+                logger.exception("Direct arXiv retry failed")
+                yield _sse("error", {"message": f"No papers found via MCP and direct arXiv retry failed: {fallback_exc}"})
+                return
+            graph_state["papers"] = papers
+            graph_state["selected_papers"] = await _select_relevant_papers(search_topic, papers, max_papers)
+
+    if not papers:
+        yield _sse("error", {"message": f"No papers found on arXiv for topic: {search_topic!r}"})
         return
 
     yield _sse("papers_found", {

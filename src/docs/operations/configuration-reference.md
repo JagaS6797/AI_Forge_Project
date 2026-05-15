@@ -27,6 +27,13 @@ Environment variables and runtime configuration values used by backend and front
 - NL2SQL_MAX_ROWS: default max rows returned by generated SELECT queries.
 - NL2SQL_SCHEMA: schema name exposed to NL-to-SQL prompt context (default public).
 
+### Project 10/12: Research Digest + MCP
+
+- ARXIV_MCP_COMMAND: optional process command for MCP server runtime.
+  - Default behavior uses active Python interpreter when empty.
+- ARXIV_MCP_MODULE: MCP module name for arXiv tool server (default arxiv_mcp_server).
+- ARXIV_MCP_STORAGE_PATH: storage path for MCP server state/cache (default ./.arxiv-mcp-server).
+
 ### LLM / LiteLLM
 
 - LITELLM_PROXY_URL

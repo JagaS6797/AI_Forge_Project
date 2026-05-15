@@ -6,6 +6,7 @@ from pydantic import BaseModel
 class ResearchDigestRequest(BaseModel):
     topic: str
     max_papers: int = 5
+    use_mcp: bool = True
 
 
 class ResearchPaper(BaseModel):

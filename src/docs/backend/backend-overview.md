@@ -30,6 +30,11 @@ FastAPI backend architecture, responsibilities by layer, and runtime behavior.
 - /api/sql
   - convert natural language question to SQL SELECT
   - execute query on Supabase PostgreSQL and return SQL + rows
+- /api/research
+  - stream research digest events (status, papers_found, selected_papers, digest_chunk, done)
+- /api/tic-tac-toe
+  - start new game
+  - submit player move and receive agent response state
 
 ### Dependency Injection
 
@@ -43,6 +48,21 @@ FastAPI backend architecture, responsibilities by layer, and runtime behavior.
 - Services isolate DB operations and error handling.
 - Thread naming and chat memory slicing are implemented in services.
 - RAG indexing/retrieval and image generation are handled in dedicated services.
+- Research digest orchestration uses LangGraph state graph nodes for search and paper selection.
+- MCP runtime configuration for arXiv tooling is centralized in app/ai/mcp_config.py.
+
+### Research Digest Orchestration (Project 10 + Project 12)
+
+- Search stage uses arXiv MCP tool invocation through stdio transport.
+- Tool payload parsing includes resilience for empty, wrapped, or partially structured text responses.
+- Request-level toggle `use_mcp` controls search mode:
+  - true: MCP-first search strategy
+  - false: direct arXiv search strategy
+- MCP-first mode automatically falls back to direct arXiv if MCP fails or returns no usable papers.
+- Selection stage uses LLM-based relevance filtering over retrieved papers.
+- LangGraph flow currently composes:
+  - START -> search -> select -> END
+- Final digest writing is streamed token-wise through SSE for live UI updates.
 
 ## Error Handling Strategy
 
