@@ -10,6 +10,8 @@ import type {
   LoginResponse,
   SqlQueryResult,
   DataFrameQueryResult,
+  TicTacToeCell,
+  TicTacToeGameState,
 } from "../types";
 
 const AUTH_TOKEN_KEY = "amzur_chat_access_token";
@@ -398,4 +400,27 @@ export async function uploadCsvFile(file: File): Promise<{ file_id: string; file
   }
 
   return (await response.json()) as { file_id: string; file_name: string; size: number };
+}
+
+// -- Project 11: Tic Tac Toe Agent ---------------------------------------------------
+
+export async function startTicTacToeGame(
+  userSymbol: "X" | "O" = "X",
+  agentStarts = false,
+): Promise<TicTacToeGameState> {
+  return apiRequest<TicTacToeGameState>("/api/tic-tac-toe/new", {
+    method: "POST",
+    body: JSON.stringify({ user_symbol: userSymbol, agent_starts: agentStarts }),
+  });
+}
+
+export async function playTicTacToeMove(
+  board: TicTacToeCell[],
+  userSymbol: "X" | "O",
+  userMove: number,
+): Promise<TicTacToeGameState> {
+  return apiRequest<TicTacToeGameState>("/api/tic-tac-toe/move", {
+    method: "POST",
+    body: JSON.stringify({ board, user_symbol: userSymbol, user_move: userMove }),
+  });
 }

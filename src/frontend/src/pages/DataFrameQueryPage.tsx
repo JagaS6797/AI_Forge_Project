@@ -67,7 +67,7 @@ export default function DataFrameQueryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-100 p-6">
+    <div className="h-full overflow-y-auto bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-100 p-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="rounded-3xl border border-emerald-200 bg-white/90 p-6 shadow-lg backdrop-blur-sm">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">Query CSV/Google Sheets with Natural Language</h1>

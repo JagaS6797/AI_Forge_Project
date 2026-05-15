@@ -3,6 +3,7 @@ export type { PdfUploadResponse, PdfProcessingStatus } from "./rag";
 export type { SqlQueryResult } from "./sql";
 export type { DataFrameQueryResult } from "./dataframe";
 export type { ResearchPaper, ResearchDigestDonePayload, ResearchEventType, ResearchSseEvent } from "./research";
+export type { TicTacToeCell, TicTacToeGameState, TicTacToeStatus } from "./tic_tac_toe";
 import type { ChatAttachment } from "./attachment";
 
 export type ChatRole = "user" | "assistant";

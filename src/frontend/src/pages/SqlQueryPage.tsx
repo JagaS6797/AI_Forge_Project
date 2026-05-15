@@ -45,7 +45,7 @@ export default function SqlQueryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="h-full overflow-y-auto bg-slate-50 p-6">
       <div className="mx-auto max-w-6xl space-y-5">
         <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <h1 className="text-2xl font-bold text-slate-900">Ask Database in Natural Language</h1>
