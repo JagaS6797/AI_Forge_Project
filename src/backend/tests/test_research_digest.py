@@ -4,12 +4,21 @@ from __future__ import annotations
 import asyncio
 import inspect
 import json
+from types import SimpleNamespace
 
 import pytest
 
 from app.schemas.research_digest import ResearchDigestRequest, ResearchDigestResponse, ResearchPaper
 from app.api.research_digest import router
-from app.services.research_digest_service import _is_live_sports_query, _sse, _paper_to_schema, stream_research_digest
+from app.services.research_digest_service import (
+    _extract_mcp_payload,
+    _is_live_sports_query,
+    _paper_dict_to_schema,
+    _paper_to_schema,
+    _parse_mcp_payload_text,
+    _sse,
+    stream_research_digest,
+)
 
 
 # ── Schema tests ──────────────────────────────────────────────────────────────
@@ -37,6 +46,45 @@ class TestResearchDigestSchemas:
         )
         assert paper.title == "Attention Is All You Need"
         assert paper.url.startswith("https://")
+
+    def test_paper_dict_to_schema(self):
+        paper = _paper_dict_to_schema(
+            {
+                "id": "2401.12345",
+                "title": "MCP-based Retrieval",
+                "authors": ["Alice", "Bob"],
+                "abstract": "A paper about MCP integration.",
+                "published": "2024-01-15",
+            }
+        )
+        assert paper.title == "MCP-based Retrieval"
+        assert paper.url == "https://arxiv.org/abs/2401.12345"
+
+    def test_parse_mcp_payload_text_handles_wrapped_json(self):
+        payload = _parse_mcp_payload_text(
+            "Search results:\n{\"papers\": [{\"id\": \"2401.12345\", \"title\": \"Wrapped\"}]}"
+        )
+        assert payload["papers"][0]["title"] == "Wrapped"
+
+    def test_extract_mcp_payload_skips_empty_chunks(self):
+        result = SimpleNamespace(
+            content=[
+                SimpleNamespace(text=""),
+                SimpleNamespace(text="   "),
+                SimpleNamespace(text='{"papers": [{"id": "2401.12345", "title": "Recovered"}]}'),
+            ]
+        )
+
+        payload = _extract_mcp_payload(result)
+
+        assert payload["papers"][0]["title"] == "Recovered"
+
+    def test_extract_mcp_payload_returns_empty_for_non_json(self):
+        result = SimpleNamespace(content=[SimpleNamespace(text="temporary upstream error")])
+
+        payload = _extract_mcp_payload(result)
+
+        assert payload == {}
 
     def test_request_missing_topic_raises(self):
         with pytest.raises(Exception):
@@ -101,23 +149,20 @@ class TestResearchDigestService:
     async def test_stream_empty_topic_yields_error(self):
         """An empty string topic should yield an error SSE event (no papers found)."""
         events = []
-        # We don't actually call arXiv — monkeypatch the blocking call
         import app.services.research_digest_service as svc
-        import asyncio
+        original = svc._search_papers_via_mcp
 
-        original = asyncio.to_thread
+        async def mock_search(*args, **kwargs):
+            return []
 
-        async def mock_to_thread(fn, *args, **kwargs):
-            return []  # simulate no results from arXiv
-
-        asyncio.to_thread = mock_to_thread  # type: ignore[assignment]
+        svc._search_papers_via_mcp = mock_search  # type: ignore[assignment]
         try:
             async for chunk in stream_research_digest(topic="", max_papers=3):
                 events.append(chunk)
                 if len(events) >= 3:
                     break
         finally:
-            asyncio.to_thread = original
+            svc._search_papers_via_mcp = original  # type: ignore[assignment]
 
         # Should have received an error event
         combined = "".join(events)
@@ -126,14 +171,14 @@ class TestResearchDigestService:
     @pytest.mark.asyncio
     async def test_stream_no_results_yields_error(self):
         """If arXiv returns 0 papers, service yields an error event."""
-        import asyncio
+        import app.services.research_digest_service as svc
 
-        original = asyncio.to_thread
+        original = svc._search_papers_via_mcp
 
-        async def mock_no_results(fn, *args, **kwargs):
+        async def mock_no_results(*args, **kwargs):
             return []
 
-        asyncio.to_thread = mock_no_results  # type: ignore[assignment]
+        svc._search_papers_via_mcp = mock_no_results  # type: ignore[assignment]
         try:
             chunks = []
             async for chunk in stream_research_digest(topic="xyzzy obscure topic 12345", max_papers=3):
@@ -141,7 +186,7 @@ class TestResearchDigestService:
                 if len(chunks) >= 3:
                     break
         finally:
-            asyncio.to_thread = original
+            svc._search_papers_via_mcp = original  # type: ignore[assignment]
 
         combined = "".join(chunks)
         assert "event: error" in combined

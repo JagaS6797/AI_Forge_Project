@@ -79,7 +79,7 @@ export default function TicTacToePage() {
   const status = game?.status ?? "idle";
 
   return (
-    <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_right,#eff6ff_12%,#f8fafc_45%,#e2e8f0_100%)] p-6">
+    <div className="h-full overflow-y-auto bg-slate-50 p-6">
       <div className="mx-auto max-w-5xl space-y-6">
         <div className="rounded-3xl border border-indigo-100 bg-white/90 p-6 shadow-lg backdrop-blur">
           <div className="flex flex-wrap items-center justify-between gap-3">

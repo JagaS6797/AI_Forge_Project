@@ -21,6 +21,7 @@ google-auth
 # AI / LLM
 langchain
 langchain-core
+langgraph
 langchain-openai
 langchain-text-splitters>=1.1.2
 langchain-chroma>=0.1.4
@@ -38,6 +39,8 @@ openpyxl
 
 # Research agent
 arxiv>=2.1.0
+arxiv-mcp-server>=0.1.4
+mcp
 
 # Google integration
 google-sheets-client

@@ -65,6 +65,21 @@ const MODULES: ModuleInfo[] = [
   },
 ];
 
+function getUserInitials(email?: string | null): string {
+  if (!email) return "JC";
+
+  const localPart = email.split("@")[0] ?? "";
+  const tokens = localPart.split(/[^a-zA-Z]+/).filter(Boolean);
+  if (tokens.length >= 2) {
+    return `${tokens[0][0] ?? ""}${tokens[1][0] ?? ""}`.toUpperCase();
+  }
+
+  const letters = localPart.replace(/[^a-zA-Z]/g, "").toUpperCase();
+  if (letters.length >= 2) return letters.slice(0, 2);
+  if (letters.length === 1) return `${letters}C`;
+  return "JC";
+}
+
 export default function App() {
   const [view, setView] = useState<AppView>("chat");
   const [isAuthenticated, setIsAuthenticated] = useState(Boolean(getAuthToken()));
@@ -176,9 +191,9 @@ export default function App() {
   return (
     <div className="h-screen overflow-hidden bg-slate-100">
       <div className="flex h-full">
-        <aside className="flex w-24 shrink-0 flex-col items-center border-r border-slate-800 bg-slate-950 py-4">
-          <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-xl bg-white text-sm font-bold text-slate-900">
-            AF
+        <aside className="flex w-28 shrink-0 flex-col items-center border-r border-slate-800 bg-slate-950 py-4">
+          <div className="mb-5 rounded-xl bg-white px-3 py-2 text-center text-[11px] font-bold uppercase tracking-wide text-slate-900">
+            Modules
           </div>
           <nav className="flex flex-1 flex-col items-center gap-2">
             {MODULES.map((module) => {
@@ -188,7 +203,7 @@ export default function App() {
                   key={module.id}
                   type="button"
                   onClick={() => setView(module.id)}
-                  className={`w-20 rounded-xl px-2 py-3 text-center transition ${
+                  className={`w-24 rounded-xl px-2 py-3 text-center transition ${
                     isActive ? "bg-white text-slate-900 shadow" : "text-slate-300 hover:bg-slate-800"
                   }`}
                 >
@@ -200,18 +215,11 @@ export default function App() {
               );
             })}
           </nav>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 transition hover:bg-slate-800"
-          >
-            Logout
-          </button>
         </aside>
 
         {view === "chat" && (
-          <aside className="flex w-80 shrink-0 flex-col border-r border-slate-200 bg-gradient-to-b from-sky-50 via-indigo-50 to-violet-50">
-            <div className="border-b border-indigo-100 px-5 py-4">
+          <aside className="flex w-80 shrink-0 flex-col border-r border-slate-300 bg-slate-200/80">
+            <div className="border-b border-slate-300 px-5 py-4">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-indigo-500">Chat Submodule</p>
               <h2 className="mt-1 text-base font-semibold text-slate-900">Chat History</h2>
               <p className="mt-1 text-xs text-slate-600">Pick, rename, or delete existing conversations.</p>
@@ -230,7 +238,7 @@ export default function App() {
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
                 {threads.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-500">
+                  <div className="rounded-xl border border-dashed border-slate-300 bg-slate-100 p-3 text-xs text-slate-500">
                     No conversations yet. Create one to begin.
                   </div>
                 ) : (
@@ -279,21 +287,33 @@ export default function App() {
                 )}
               </div>
             </div>
-            <div className="border-t border-indigo-100 px-4 py-3">
-              <p className="text-xs font-medium text-slate-700">Signed in as</p>
-              <p className="truncate text-xs text-slate-500">{user?.email ?? "Unknown user"}</p>
-            </div>
           </aside>
         )}
 
         <section className="flex min-w-0 flex-1 flex-col">
           <header className="border-b border-slate-200 bg-white px-6 py-4">
-            <h1 className="text-lg font-semibold text-slate-900">{currentModule.name}</h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {view === "chat"
-                ? "Pick a conversation from the chat history panel, or create a new one."
-                : currentModule.description}
-            </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-lg font-semibold text-slate-900">{currentModule.name}</h1>
+                <p className="mt-1 text-sm text-slate-600">
+                  {view === "chat"
+                    ? "Pick a conversation from the chat history panel, or create a new one."
+                    : currentModule.description}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-1">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-xs font-bold text-white">
+                  {getUserInitials(user?.email)}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-md px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-200"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
           </header>
 
           <main className="min-h-0 flex-1 overflow-hidden">

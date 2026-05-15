@@ -5,16 +5,17 @@ import json
 import logging
 import re
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, AsyncIterator, Any
+from typing import AsyncIterator, Any, TypedDict
 
+from mcp import ClientSession
+from mcp.client.stdio import stdio_client
 import requests
+from langgraph.graph import END, START, StateGraph
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.ai.llm import chat_llm
+from app.ai.mcp_config import get_arxiv_mcp_server_params
 from app.schemas.research_digest import ResearchPaper
-
-if TYPE_CHECKING:
-    import arxiv
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,13 @@ _LIVE_SPORTS_KEYWORDS = (
     "teams are participating",
     "who is playing",
 )
+
+
+class ResearchDigestState(TypedDict, total=False):
+    topic: str
+    max_papers: int
+    papers: list[ResearchPaper]
+    selected_papers: list[ResearchPaper]
 
 # ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -45,15 +53,175 @@ def _paper_to_schema(result: Any) -> ResearchPaper:
     )
 
 
-def _import_arxiv() -> Any:
-    """Import arxiv lazily so missing package does not crash app startup."""
+def _paper_dict_to_schema(result: dict[str, Any]) -> ResearchPaper:
+    authors = result.get("authors", [])
+    published = result.get("published") or result.get("published_date") or "unknown"
+    summary = (result.get("abstract") or result.get("summary") or "").replace("\n", " ").strip()
+    if len(summary) > 400:
+        summary = summary[:400] + "…"
+
+    paper_id = result.get("id") or result.get("paper_id") or ""
+    paper_url = paper_id if str(paper_id).startswith("http") else f"https://arxiv.org/abs/{paper_id}"
+
+    return ResearchPaper(
+        title=result.get("title", "Untitled paper"),
+        authors=[str(author) for author in authors[:4]],
+        published=str(published),
+        summary=summary or "No abstract available.",
+        url=paper_url,
+    )
+
+
+def _coerce_mcp_payload(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list):
+        return {"papers": value}
+    return {}
+
+
+def _extract_json_candidate(text: str) -> str:
+    stripped = text.strip()
+    if not stripped:
+        return ""
+
+    start_positions = [pos for pos in (stripped.find("{"), stripped.find("[")) if pos != -1]
+    end_positions = [pos for pos in (stripped.rfind("}"), stripped.rfind("]")) if pos != -1]
+    if not start_positions or not end_positions:
+        return stripped
+
+    start = min(start_positions)
+    end = max(end_positions)
+    return stripped[start:end + 1]
+
+
+def _parse_mcp_payload_text(payload_text: str) -> dict[str, Any]:
+    candidate = _extract_json_candidate(payload_text)
+    if not candidate:
+        return {}
+
+    parsed: Any = candidate
+    for _ in range(2):
+        if not isinstance(parsed, str):
+            break
+        parsed = json.loads(parsed)
+
+    return _coerce_mcp_payload(parsed)
+
+
+def _extract_mcp_payload(result: Any) -> dict[str, Any]:
+    content = getattr(result, "content", None) or []
+    text_chunks = [item.text.strip() for item in content if getattr(item, "text", "").strip()]
+
+    if not text_chunks:
+        logger.warning("arXiv MCP returned no text payload")
+        return {}
+
+    for text in text_chunks:
+        try:
+            payload = _parse_mcp_payload_text(text)
+        except json.JSONDecodeError:
+            continue
+        if payload:
+            return payload
+
+    combined = "\n".join(text_chunks)
     try:
-        import arxiv  # type: ignore[import]
-    except Exception as exc:
-        raise RuntimeError(
-            "The arxiv package is not installed. Install backend dependencies from requirements.txt."
-        ) from exc
-    return arxiv
+        payload = _parse_mcp_payload_text(combined)
+    except json.JSONDecodeError:
+        logger.warning("Unexpected arXiv MCP payload: %s", combined[:500])
+        return {}
+
+    if payload:
+        return payload
+
+    logger.warning("arXiv MCP payload did not contain paper JSON: %s", combined[:500])
+    return {}
+
+
+async def _search_papers_via_mcp(topic: str, max_results: int) -> list[ResearchPaper]:
+    """Search arXiv through the MCP server instead of the direct arxiv client."""
+    server_params = get_arxiv_mcp_server_params()
+
+    async with stdio_client(server_params) as (read_stream, write_stream):
+        async with ClientSession(read_stream, write_stream) as session:
+            await session.initialize()
+            result = await session.call_tool(
+                "search_papers",
+                {
+                    "query": topic,
+                    "max_results": max_results,
+                    "sort_by": "relevance",
+                },
+            )
+
+    if not result.content:
+        return []
+
+    payload = _extract_mcp_payload(result)
+    papers = payload.get("papers", [])
+    return [_paper_dict_to_schema(paper) for paper in papers]
+
+
+async def _select_relevant_papers(topic: str, papers: list[ResearchPaper], max_papers: int) -> list[ResearchPaper]:
+    paper_list_text = "\n\n".join(
+        f"[{i+1}] {p.title}\nAuthors: {', '.join(p.authors)}\nPublished: {p.published}\nSummary: {p.summary}"
+        for i, p in enumerate(papers)
+    )
+
+    min_papers = min(3, max_papers)
+    max_selection = min(max_papers, len(papers))
+
+    selection_messages = [
+        SystemMessage(content=(
+            "You are a research evaluation agent. Given a topic and a list of arXiv papers, "
+            "decide which papers are most relevant. Return ONLY a JSON array of 1-based indices "
+            f"of the selected papers (e.g. [1, 2, 4]). Select between {min_papers} and {max_selection} papers. "
+            f"Aim to select as many as possible (closer to {max_selection}) if they are relevant. "
+            "No explanation — just the JSON array."
+        )),
+        HumanMessage(content=(
+            f"Topic: {topic}\n\nPapers:\n{paper_list_text}\n\n"
+            "Which papers (by number) best cover this topic? Return a JSON array of indices."
+        )),
+    ]
+
+    try:
+        selection_response = await chat_llm.ainvoke(selection_messages)
+        raw = selection_response.content.strip()
+        start, end = raw.find("["), raw.rfind("]")
+        indices: list[int] = json.loads(raw[start:end + 1]) if start != -1 else list(range(1, min(4, len(papers)) + 1))
+        return [papers[i - 1] for i in indices if 1 <= i <= len(papers)][:max_papers]
+    except Exception:
+        logger.warning("LLM selection failed, falling back to top papers")
+        return papers[:max_papers]
+
+
+async def _graph_search_node(state: ResearchDigestState) -> ResearchDigestState:
+    papers = await _search_papers_via_mcp(state["topic"], state["max_papers"] + 3)
+    return {"papers": papers}
+
+
+async def _graph_select_node(state: ResearchDigestState) -> ResearchDigestState:
+    selected_papers = await _select_relevant_papers(
+        state["topic"],
+        state.get("papers", []),
+        state["max_papers"],
+    )
+    return {"selected_papers": selected_papers}
+
+
+def _build_research_graph():
+    graph = StateGraph(ResearchDigestState)
+    graph.add_node("search", _graph_search_node)
+    graph.add_node("select", _graph_select_node)
+    graph.add_edge(START, "search")
+    graph.add_edge("search", "select")
+    graph.add_edge("select", END)
+    return graph.compile()
+
+
+_RESEARCH_GRAPH = _build_research_graph()
 
 
 def _is_live_sports_query(topic: str) -> bool:
@@ -184,69 +352,29 @@ async def stream_research_digest(topic: str, max_papers: int = 5) -> AsyncIterat
 
     yield _sse("status", {"message": f"Searching arXiv for: {topic}…", "step": 1})
 
-    # ── Step 1: Search arXiv ─────────────────────────────────────────────────
+    # ── Step 1-2: LangGraph orchestrates MCP search + relevance selection ───
     try:
-        arxiv = _import_arxiv()
-        client = arxiv.Client(num_retries=3, delay_seconds=3)
-        search = arxiv.Search(
-            query=topic,
-            max_results=max_papers + 3,   # fetch a few extra for agent to choose from
-            sort_by=arxiv.SortCriterion.Relevance,
-        )
-        # results() is blocking I/O — run in thread to avoid blocking event loop
-        results = await asyncio.to_thread(lambda: list(client.results(search)))
+        graph_state = await _RESEARCH_GRAPH.ainvoke({"topic": topic, "max_papers": max_papers})
     except Exception as exc:
-        logger.exception("arXiv search failed")
-        yield _sse("error", {"message": f"arXiv search failed: {exc}"})
+        logger.exception("arXiv MCP search failed")
+        yield _sse("error", {"message": f"arXiv MCP search failed: {exc}"})
         return
 
-    if not results:
+    papers = graph_state.get("papers", [])
+
+    if not papers:
         yield _sse("error", {"message": f"No papers found on arXiv for topic: {topic!r}"})
         return
 
-    papers = [_paper_to_schema(r) for r in results]
     yield _sse("papers_found", {
         "count": len(papers),
         "message": f"Found {len(papers)} papers. Evaluating relevance…",
         "step": 2,
     })
 
-    # ── Step 2: LLM decides which papers are relevant ────────────────────────
-    paper_list_text = "\n\n".join(
-        f"[{i+1}] {p.title}\nAuthors: {', '.join(p.authors)}\nPublished: {p.published}\nSummary: {p.summary}"
-        for i, p in enumerate(papers)
-    )
-
-    # Calculate selection range based on max_papers
-    min_papers = min(3, max_papers)  # Minimum 3 papers, or max_papers if less
-    max_selection = min(max_papers, len(papers))  # Don't exceed available papers
-
-    selection_messages = [
-        SystemMessage(content=(
-            "You are a research evaluation agent. Given a topic and a list of arXiv papers, "
-            "decide which papers are most relevant. Return ONLY a JSON array of 1-based indices "
-            f"of the selected papers (e.g. [1, 2, 4]). Select between {min_papers} and {max_selection} papers. "
-            "Aim to select as many as possible (closer to {max_selection}) if they are relevant. "
-            "No explanation — just the JSON array."
-        )),
-        HumanMessage(content=(
-            f"Topic: {topic}\n\nPapers:\n{paper_list_text}\n\n"
-            "Which papers (by number) best cover this topic? Return a JSON array of indices."
-        )),
-    ]
-
     yield _sse("status", {"message": "Agent evaluating paper relevance…", "step": 3})
 
-    try:
-        selection_response = await chat_llm.ainvoke(selection_messages)
-        raw = selection_response.content.strip()
-        # Extract JSON array robustly
-        start, end = raw.find("["), raw.rfind("]")
-        indices: list[int] = json.loads(raw[start:end + 1]) if start != -1 else list(range(1, min(4, len(papers)) + 1))
-        selected_papers = [papers[i - 1] for i in indices if 1 <= i <= len(papers)][:max_papers]
-    except Exception:
-        logger.warning("LLM selection failed, falling back to top papers")
-        selected_papers = papers[:max_papers]
+    selected_papers = graph_state.get("selected_papers", [])
 
     yield _sse("selected_papers", {
         "papers": [p.model_dump() for p in selected_papers],

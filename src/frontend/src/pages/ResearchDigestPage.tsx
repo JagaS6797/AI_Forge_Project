@@ -184,7 +184,7 @@ export default function ResearchDigestPage() {
   const digestSections = parseDigestSections(streamedDigest);
 
   return (
-    <div className="h-full overflow-y-auto bg-[radial-gradient(circle_at_top_left,#f5f3ff_15%,#fdf4ff_48%,#eef2ff_100%)] p-6">
+    <div className="h-full overflow-y-auto bg-slate-50 p-6">
       <div className="mx-auto max-w-4xl space-y-6">
         {/* Header */}
         <div className="rounded-3xl border border-violet-100 bg-white/90 p-6 shadow-lg backdrop-blur">

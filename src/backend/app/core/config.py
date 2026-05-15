@@ -50,5 +50,10 @@ class Settings(BaseSettings):
     csv_upload_dir: str = "./csv_uploads"
     dataframe_agent_max_iterations: int = 10
 
+    # MCP (Project 12)
+    arxiv_mcp_command: str = ""
+    arxiv_mcp_module: str = "arxiv_mcp_server"
+    arxiv_mcp_storage_path: str = "./.arxiv-mcp-server"
+
 
 settings = Settings()
