@@ -2,10 +2,11 @@ import { useState } from "react";
 
 import ChatPage from "./pages/ChatPage";
 import DataFrameQueryPage from "./pages/DataFrameQueryPage";
+import ResearchDigestPage from "./pages/ResearchDigestPage";
 import SqlQueryPage from "./pages/SqlQueryPage";
 import { getAuthToken } from "./lib/api";
 
-type AppView = "chat" | "project8" | "project9";
+type AppView = "chat" | "project8" | "project9" | "project10";
 
 export default function App() {
   const [view, setView] = useState<AppView>("chat");
@@ -42,6 +43,15 @@ export default function App() {
           >
             DataFrame
           </button>
+          <button
+            type="button"
+            onClick={() => setView("project10")}
+            className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
+              view === "project10" ? "bg-violet-600 text-white" : "bg-white text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Research
+          </button>
         </div>
       )}
 
@@ -49,8 +59,10 @@ export default function App() {
         <ChatPage onAuthStateChange={setIsAuthenticated} />
       ) : view === "project8" ? (
         <SqlQueryPage />
-      ) : (
+      ) : view === "project9" ? (
         <DataFrameQueryPage />
+      ) : (
+        <ResearchDigestPage />
       )}
     </div>
   );

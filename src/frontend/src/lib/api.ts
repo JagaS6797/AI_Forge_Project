@@ -306,6 +306,73 @@ export async function queryDataFrameWithNL(
   });
 }
 
+// -- Project 10: Research Digest Agent ---------------------------------------------------
+
+export function streamResearchDigest(
+  topic: string,
+  maxPapers = 5,
+  onEvent: (eventName: string, data: Record<string, unknown>) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    fetch(`${API_BASE_URL}/api/research/digest`, {
+      method: "POST",
+      credentials: "include",
+      headers: withAuthHeaders({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ topic, max_papers: maxPapers }),
+      signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          let msg = `Request failed: ${response.status}`;
+          try {
+            const body = await response.json() as { detail?: string };
+            if (typeof body.detail === "string") msg = body.detail;
+          } catch { /* ignore */ }
+          reject(new Error(msg));
+          return;
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) { reject(new Error("No response body")); return; }
+
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        const pump = async (): Promise<void> => {
+          const { done, value } = await reader.read();
+          if (done) { resolve(); return; }
+          buffer += decoder.decode(value, { stream: true });
+
+          // Split on double newlines (SSE message boundaries)
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+
+          for (const part of parts) {
+            const lines = part.split("\n");
+            let eventName = "message";
+            let dataLine = "";
+            for (const line of lines) {
+              if (line.startsWith("event: ")) eventName = line.slice(7).trim();
+              else if (line.startsWith("data: ")) dataLine = line.slice(6).trim();
+            }
+            if (dataLine) {
+              try {
+                const parsed = JSON.parse(dataLine) as Record<string, unknown>;
+                onEvent(eventName, parsed);
+                if (eventName === "done" || eventName === "error") { resolve(); return; }
+              } catch { /* skip malformed */ }
+            }
+          }
+          return pump();
+        };
+
+        return pump();
+      })
+      .catch(reject);
+  });
+}
+
 export async function uploadCsvFile(file: File): Promise<{ file_id: string; file_name: string; size: number }> {
   const formData = new FormData();
   formData.append("file", file);

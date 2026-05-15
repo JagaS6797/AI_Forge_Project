@@ -36,6 +36,9 @@ tabulate
 gspread
 openpyxl
 
+# Research agent
+arxiv>=2.1.0
+
 # Google integration
 google-sheets-client
 google-api-python-client
