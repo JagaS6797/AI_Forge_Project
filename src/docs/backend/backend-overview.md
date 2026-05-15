@@ -27,6 +27,9 @@ FastAPI backend architecture, responsibilities by layer, and runtime behavior.
 - /api/threads
   - list/create/rename/delete threads
   - list messages by thread
+- /api/sql
+  - convert natural language question to SQL SELECT
+  - execute query on Supabase PostgreSQL and return SQL + rows
 
 ### Dependency Injection
 

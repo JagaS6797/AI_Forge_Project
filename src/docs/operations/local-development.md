@@ -8,14 +8,14 @@ Local setup, startup commands, and troubleshooting guidance for backend and fron
 
 - Python 3.14 available via local path.
 - Node.js and npm installed.
-- Backend env file at src/backend/.env.development.
+- Backend env file at src/backend/.env.dev.
 
 ## Backend Setup
 
 1. Install dependencies:
    - python -m pip install -r src/backend/requirements.txt
 2. Start backend:
-   - python -m uvicorn --app-dir src/backend --env-file src/backend/.env.development app.main:app --reload --host 0.0.0.0 --port 8000
+   - python -m uvicorn --app-dir src/backend --env-file src/backend/.env.dev app.main:app --reload --host 0.0.0.0 --port 8000
 3. Verify:
    - GET http://localhost:8000/docs should return status 200.
 
@@ -23,6 +23,7 @@ Local setup, startup commands, and troubleshooting guidance for backend and fron
 
 1. Install dependencies:
    - npm --prefix src/frontend install
+   - Frontend env file at src/frontend/.env.dev.
 2. Start frontend:
    - npm --prefix src/frontend run dev
 3. Verify:

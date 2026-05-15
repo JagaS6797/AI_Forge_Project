@@ -4,7 +4,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env.dev", env_file_encoding="utf-8", extra="ignore")
 
     # App
     secret_key: str
@@ -16,6 +16,7 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str
+    supabase_sql_database_url: Optional[str] = None
 
     # Amzur LiteLLM Proxy
     litellm_proxy_url: str
@@ -39,6 +40,10 @@ class Settings(BaseSettings):
     # File uploads
     max_upload_mb: int = 20
     upload_dir: str = "./uploads"
+
+    # NL to SQL
+    nl2sql_max_rows: int = 100
+    nl2sql_schema: str = "public"
 
 
 settings = Settings()

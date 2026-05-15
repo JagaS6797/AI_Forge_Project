@@ -8,6 +8,7 @@ import type {
   PdfUploadResponse,
   ChatThread,
   LoginResponse,
+  SqlQueryResult,
 } from "../types";
 
 const AUTH_TOKEN_KEY = "amzur_chat_access_token";
@@ -273,4 +274,16 @@ export async function downloadAttachment(attachmentId: string): Promise<Blob> {
   }
 
   return response.blob();
+}
+
+// -- Project 8: NL to SQL ----------------------------------------------------
+
+export async function askDatabaseQuestion(
+  question: string,
+  maxRows = 50,
+): Promise<SqlQueryResult> {
+  return apiRequest<SqlQueryResult>("/api/sql/query", {
+    method: "POST",
+    body: JSON.stringify({ question, max_rows: maxRows }),
+  });
 }

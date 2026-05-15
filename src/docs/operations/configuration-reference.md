@@ -19,6 +19,13 @@ Environment variables and runtime configuration values used by backend and front
 
 - DATABASE_URL: PostgreSQL connection URL.
   - Can be postgresql://... or postgresql+asyncpg://...
+- SUPABASE_SQL_DATABASE_URL: optional dedicated DB URL for natural-language SQL feature.
+  - Falls back to DATABASE_URL when omitted.
+
+### Project 8: NL to SQL
+
+- NL2SQL_MAX_ROWS: default max rows returned by generated SELECT queries.
+- NL2SQL_SCHEMA: schema name exposed to NL-to-SQL prompt context (default public).
 
 ### LLM / LiteLLM
 
