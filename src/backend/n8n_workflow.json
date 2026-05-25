@@ -1,0 +1,1166 @@
+﻿{
+    "name": "Support Triage - Option 3",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "support-triage",
+                "options": {}
+            },
+            "id": "101fcffe-0ff9-4fad-9124-ed74bf4da16f",
+            "name": "1. Webhook: Chat Events",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 2,
+            "position": [
+                -3232,
+                560
+            ],
+            "webhookId": "55a4dd3c-1a16-43ab-b326-95a9a931356f"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "1",
+                            "name": "user_email",
+                            "value": "={{ $json.body.user_email }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2",
+                            "name": "thread_id",
+                            "value": "={{ $json.body.thread_id }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3",
+                            "name": "user_message",
+                            "value": "={{ $json.body.user_message }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "4",
+                            "name": "assistant_message",
+                            "value": "={{ $json.body.assistant_message }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "5",
+                            "name": "timestamp",
+                            "value": "={{ $json.body.timestamp || new Date().toISOString() }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "0489fd1b-2db1-429a-92ad-379bf858d459",
+            "name": "2. Extract Event Data",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -3008,
+                560
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Classify message intent using keywords\nconst message = ($json.user_message || \u0027\u0027).toLowerCase();\nlet intent = \u0027normal\u0027;\n\n// Escalation keywords\nconst escalationKeywords = [\u0027urgent\u0027, \u0027broken\u0027, \u0027error\u0027, \u0027not working\u0027, \u0027bug\u0027, \u0027issue\u0027, \u0027problem\u0027, \u0027failed\u0027, \u0027help\u0027, \u0027support\u0027, \u0027critical\u0027, \u0027down\u0027, \u0027emergency\u0027];\nif (escalationKeywords.some(kw =\u003e message.includes(kw))) {\n  intent = \u0027escalation\u0027;\n}\n\n// Compliance keywords\nconst complianceKeywords = [\u0027lawsuit\u0027, \u0027legal\u0027, \u0027gdpr\u0027, \u0027privacy\u0027, \u0027breach\u0027, \u0027security\u0027, \u0027vulnerable\u0027];\nif (complianceKeywords.some(kw =\u003e message.includes(kw))) {\n  intent = \u0027compliance\u0027;\n}\n\n// Sales keywords\nconst salesKeywords = [\u0027price\u0027, \u0027pricing\u0027, \u0027buy\u0027, \u0027purchase\u0027, \u0027plan\u0027, \u0027upgrade\u0027, \u0027enterprise\u0027, \u0027cost\u0027, \u0027trial\u0027, \u0027demo\u0027, \u0027sales\u0027, \u0027subscription\u0027];\nif (salesKeywords.some(kw =\u003e message.includes(kw))) {\n  intent = \u0027sales\u0027;\n}\n\nreturn [{\n  json: {\n    ...($json),\n    intent: intent,\n    priority: intent === \u0027compliance\u0027 ? \u0027URGENT\u0027 : (intent === \u0027escalation\u0027 ? \u0027HIGH\u0027 : (intent === \u0027sales\u0027 ? \u0027MEDIUM\u0027 : \u0027LOW\u0027))\n  }\n}];"
+            },
+            "id": "628afbfb-1eda-44f1-992f-dc0d759d3387",
+            "name": "3. Classify Intent (Keyword)",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -2784,
+                560
+            ]
+        },
+        {
+            "parameters": {
+                "rules": {
+                    "values": [
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": false,
+                                    "leftValue": "",
+                                    "typeValidation": "strict",
+                                    "version": 2
+                                },
+                                "combinator": "and",
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.intent }}",
+                                        "rightValue": "escalation",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": false,
+                                    "leftValue": "",
+                                    "typeValidation": "strict",
+                                    "version": 2
+                                },
+                                "combinator": "and",
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.intent }}",
+                                        "rightValue": "compliance",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "conditions": {
+                                "options": {
+                                    "caseSensitive": false,
+                                    "leftValue": "",
+                                    "typeValidation": "strict",
+                                    "version": 2
+                                },
+                                "combinator": "and",
+                                "conditions": [
+                                    {
+                                        "leftValue": "={{ $json.intent }}",
+                                        "rightValue": "sales",
+                                        "operator": {
+                                            "type": "string",
+                                            "operation": "equals"
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "9f827249-2535-454c-ab56-dcb97af8077b",
+            "name": "4. Route by Intent",
+            "type": "n8n-nodes-base.switch",
+            "typeVersion": 3,
+            "position": [
+                -2560,
+                544
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "1",
+                            "name": "email_to",
+                            "value": "jagadesh.chinantha@amzur.com",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2",
+                            "name": "email_subject",
+                            "value": "=âš ï¸ URGENT: Your Support Request - Escalation",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3",
+                            "name": "email_body",
+                            "value": "=SUPPORT ESCALATION ALERT\n\nDear {{ $json.user_email }},\n\nYour issue has been classified as URGENT and requires immediate attention.\n\nðŸ“Œ Issue:\n{{ $json.user_message }}\n\nðŸ¤– AI Response:\n{{ $json.assistant_message }}\n\nâ° Timestamp: {{ $json.timestamp }}\n\nOur support team will follow up within 1 hour.\n\nBest regards,\nAI Support System",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "a6f0820a-3620-4cf8-9c69-44a60c483932",
+            "name": "5a. Format Escalation Email",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -2336,
+                368
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "1",
+                            "name": "email_to",
+                            "value": "jagadesh.chinantha@amzur.com",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2",
+                            "name": "email_subject",
+                            "value": "=ðŸ”’ COMPLIANCE ALERT: {{ $json.user_email }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3",
+                            "name": "email_body",
+                            "value": "=COMPLIANCE/SECURITY ALERT\n\nUser: {{ $json.user_email }}\nThread: {{ $json.thread_id }}\nClassification: {{ $json.intent }}\n\nðŸ“Œ User Message:\n{{ $json.user_message }}\n\nðŸ¤– AI Response:\n{{ $json.assistant_message }}\n\nâ° Reported: {{ $json.timestamp }}\n\nPlease review and take appropriate action.",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "dd72b133-e92e-4662-8f81-86089bc2ed70",
+            "name": "6a. Format Compliance Email",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -2336,
+                560
+            ]
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "1",
+                            "name": "email_to",
+                            "value": "jagadesh.chinantha@amzur.com",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2",
+                            "name": "email_subject",
+                            "value": "=ðŸ’¼ New Sales Lead: {{ $json.user_email }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3",
+                            "name": "email_body",
+                            "value": "=NEW SALES OPPORTUNITY\n\nProspect: {{ $json.user_email }}\nThread: {{ $json.thread_id }}\n\nðŸ“Œ Inquiry:\n{{ $json.user_message }}\n\nðŸ¤– AI Response:\n{{ $json.assistant_message }}\n\nâ° Time: {{ $json.timestamp }}\n\nPlease contact this prospect for follow-up.",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "includeOtherFields": true,
+                "options": {}
+            },
+            "id": "b9e47acb-71d4-4b5d-bafa-ee2ead7a4f84",
+            "name": "7a. Format Sales Email",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -2336,
+                752
+            ]
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email_to }}",
+                "subject": "={{ $json.email_subject }}",
+                "message": "={{ $json.email_body }}",
+                "options": {}
+            },
+            "id": "c30e3d96-bf29-4f31-ae2b-fae326f883bb",
+            "name": "5b. Send Escalation Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                -2112,
+                368
+            ],
+            "webhookId": "2e00b021-bf21-4660-8994-dc32ada4dc83",
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "7hp3oGNaXt3IQ8NK",
+                    "name": "Gmail account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email_to }}",
+                "subject": "={{ $json.email_subject }}",
+                "message": "={{ $json.email_body }}",
+                "options": {}
+            },
+            "id": "03c722dc-17f7-4f26-8267-52e227f11fd9",
+            "name": "6b. Send Compliance Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                -2112,
+                560
+            ],
+            "webhookId": "df1861c9-5821-4a86-8081-02447ba70db4",
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "7hp3oGNaXt3IQ8NK",
+                    "name": "Gmail account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email_to }}",
+                "subject": "={{ $json.email_subject }}",
+                "message": "={{ $json.email_body }}",
+                "options": {}
+            },
+            "id": "b9144361-fd10-4c87-8013-6eaca431aaa9",
+            "name": "7b. Send Sales Email",
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                -2112,
+                752
+            ],
+            "webhookId": "6eea33b8-0702-4292-a76e-297ddd5c32a8",
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "7hp3oGNaXt3IQ8NK",
+                    "name": "Gmail account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "schema": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "public"
+                },
+                "table": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "tickets"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "ticket_id": "={{ \"TKT-ESC-\" + $now.toMillis() + \"-\" + Math.floor(Math.random()*10000) }}",
+                        "user_email": "={{ $(\u00272. Extract Event Data\u0027).item.json.user_email }}",
+                        "issue": "={{ $(\u00272. Extract Event Data\u0027).item.json.user_message }}",
+                        "category": "escalation",
+                        "priority": "HIGH",
+                        "status": "open",
+                        "thread_id": "={{ $(\u00272. Extract Event Data\u0027).item.json.thread_id }}",
+                        "assigned_team": "Engineering / On-call",
+                        "next_action": "Immediate investigation by on-call engineer"
+                    },
+                    "matchingColumns": [
+                        "id"
+                    ],
+                    "schema": [
+                        {
+                            "id": "id",
+                            "displayName": "id",
+                            "required": false,
+                            "defaultMatch": true,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true,
+                            "removed": false
+                        },
+                        {
+                            "id": "ticket_id",
+                            "displayName": "ticket_id",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "user_email",
+                            "displayName": "user_email",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "issue",
+                            "displayName": "issue",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "category",
+                            "displayName": "category",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "priority",
+                            "displayName": "priority",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "status",
+                            "displayName": "status",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "created_at",
+                            "displayName": "created_at",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "dateTime",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "updated_at",
+                            "displayName": "updated_at",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "dateTime",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "thread_id",
+                            "displayName": "thread_id",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "assigned_team",
+                            "displayName": "assigned_team",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "next_action",
+                            "displayName": "next_action",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        }
+                    ],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                },
+                "options": {}
+            },
+            "id": "cda8e9aa-adf2-4e4f-8471-55fa78450409",
+            "name": "5c. Log Escalation Event to DB",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 2.6,
+            "position": [
+                -1888,
+                368
+            ],
+            "credentials": {
+                "postgres": {
+                    "id": "VoWM18y9lo1Hx8Dc",
+                    "name": "Postgres account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "schema": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "public"
+                },
+                "table": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "tickets"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "ticket_id": "={{ \"TKT-COMP-\" + $now.toMillis() + \"-\" + Math.floor(Math.random()*10000) }}",
+                        "user_email": "={{ $(\u00272. Extract Event Data\u0027).item.json.user_email }}",
+                        "issue": "={{ $(\u00272. Extract Event Data\u0027).item.json.user_message }}",
+                        "category": "compliance",
+                        "priority": "HIGH",
+                        "status": "open",
+                        "thread_id": "={{ $(\u00272. Extract Event Data\u0027).item.json.thread_id }}",
+                        "assigned_team": "Compliance / Legal",
+                        "next_action": "Compliance officer to review within 24h"
+                    },
+                    "matchingColumns": [
+                        "id"
+                    ],
+                    "schema": [
+                        {
+                            "id": "id",
+                            "displayName": "id",
+                            "required": false,
+                            "defaultMatch": true,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true,
+                            "removed": false
+                        },
+                        {
+                            "id": "ticket_id",
+                            "displayName": "ticket_id",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "user_email",
+                            "displayName": "user_email",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "issue",
+                            "displayName": "issue",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "category",
+                            "displayName": "category",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "priority",
+                            "displayName": "priority",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "status",
+                            "displayName": "status",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "created_at",
+                            "displayName": "created_at",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "dateTime",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "updated_at",
+                            "displayName": "updated_at",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "dateTime",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "thread_id",
+                            "displayName": "thread_id",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "assigned_team",
+                            "displayName": "assigned_team",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "next_action",
+                            "displayName": "next_action",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        }
+                    ],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                },
+                "options": {}
+            },
+            "id": "9cbd7f0d-0e1b-4f0c-b2ec-823aabe28766",
+            "name": "6c. Log Compliance Event to DB",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 2.6,
+            "position": [
+                -1888,
+                560
+            ],
+            "credentials": {
+                "postgres": {
+                    "id": "VoWM18y9lo1Hx8Dc",
+                    "name": "Postgres account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "1",
+                            "name": "Timestamp",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.timestamp || new Date().toISOString() }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "2",
+                            "name": "User Email",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.user_email }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "3",
+                            "name": "Thread ID",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.thread_id }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "4",
+                            "name": "Intent",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.intent }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "5",
+                            "name": "Priority",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.priority }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "6",
+                            "name": "User Message",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.user_message }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "7",
+                            "name": "AI Response",
+                            "value": "={{ $(\u00273. Classify Intent (Keyword)\u0027).item.json.assistant_message }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "8",
+                            "name": "Email Sent To",
+                            "value": "={{ $(\u00277a. Format Sales Email\u0027).item.json.email_to }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "9",
+                            "name": "Status",
+                            "value": "Email Sent",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "663f57d4-d815-4290-a4d8-6a05cb0de04d",
+            "name": "7c. Prepare Sheet Data",
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                -1888,
+                752
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "append",
+                "documentId": {
+                    "__rl": true,
+                    "mode": "url",
+                    "value": "https://docs.google.com/spreadsheets/d/1K5rhs63ocvwegZyjwB4MQ2RinasVATUq9EC0IvAOOL4/edit?gid=1759201571#gid=1759201571"
+                },
+                "sheetName": {
+                    "__rl": true,
+                    "value": 1759201571,
+                    "mode": "list",
+                    "cachedResultName": "Chat-History",
+                    "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1K5rhs63ocvwegZyjwB4MQ2RinasVATUq9EC0IvAOOL4/edit#gid=1759201571"
+                },
+                "columns": {
+                    "mappingMode": "autoMapInputData",
+                    "value": {},
+                    "matchingColumns": [],
+                    "schema": [
+                        {
+                            "id": "Timestamp",
+                            "displayName": "Timestamp",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "User Email",
+                            "displayName": "User Email",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "Thread ID",
+                            "displayName": "Thread ID",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "Intent",
+                            "displayName": "Intent",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "Priority",
+                            "displayName": "Priority",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "User Message",
+                            "displayName": "User Message",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "AI Response",
+                            "displayName": "AI Response",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "Email Sent To",
+                            "displayName": "Email Sent To",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "Status",
+                            "displayName": "Status",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        }
+                    ],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                },
+                "options": {}
+            },
+            "id": "3e40ee5c-e376-4645-b8de-f43bbd1ec044",
+            "name": "7d. Log to Google Sheets",
+            "type": "n8n-nodes-base.googleSheets",
+            "typeVersion": 4.7,
+            "position": [
+                -1664,
+                752
+            ],
+            "credentials": {
+                "googleSheetsOAuth2Api": {
+                    "id": "3KcGMzhZjT8K4j1r",
+                    "name": "Google Sheets account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "schema": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "public"
+                },
+                "table": {
+                    "__rl": true,
+                    "mode": "list",
+                    "value": "tickets"
+                },
+                "columns": {
+                    "mappingMode": "defineBelow",
+                    "value": {
+                        "ticket_id": "={{ \"TKT-SALES-\" + $now.toMillis() + \"-\" + Math.floor(Math.random()*10000) }}",
+                        "user_email": "={{ $(\u00272. Extract Event Data\u0027).item.json.user_email }}",
+                        "issue": "={{ $(\u00272. Extract Event Data\u0027).item.json.user_message }}",
+                        "category": "sales",
+                        "priority": "MEDIUM",
+                        "status": "open",
+                        "thread_id": "={{ $(\u00272. Extract Event Data\u0027).item.json.thread_id }}",
+                        "assigned_team": "Sales",
+                        "next_action": "Sales rep to follow up within 1 business day"
+                    },
+                    "matchingColumns": [
+                        "id"
+                    ],
+                    "schema": [
+                        {
+                            "id": "id",
+                            "displayName": "id",
+                            "required": false,
+                            "defaultMatch": true,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true,
+                            "removed": false
+                        },
+                        {
+                            "id": "ticket_id",
+                            "displayName": "ticket_id",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "user_email",
+                            "displayName": "user_email",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "issue",
+                            "displayName": "issue",
+                            "required": true,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "category",
+                            "displayName": "category",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "priority",
+                            "displayName": "priority",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "status",
+                            "displayName": "status",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "created_at",
+                            "displayName": "created_at",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "dateTime",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "updated_at",
+                            "displayName": "updated_at",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "dateTime",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "thread_id",
+                            "displayName": "thread_id",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "assigned_team",
+                            "displayName": "assigned_team",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        },
+                        {
+                            "id": "next_action",
+                            "displayName": "next_action",
+                            "required": false,
+                            "defaultMatch": false,
+                            "display": true,
+                            "type": "string",
+                            "canBeUsedToMatch": true
+                        }
+                    ],
+                    "attemptToConvertTypes": false,
+                    "convertFieldsToString": false
+                },
+                "options": {}
+            },
+            "id": "87d735c6-21fe-4176-a462-7bbb098833b6",
+            "name": "7e. Log Sales Event to DB",
+            "type": "n8n-nodes-base.postgres",
+            "typeVersion": 2.6,
+            "position": [
+                -1440,
+                752
+            ],
+            "credentials": {
+                "postgres": {
+                    "id": "VoWM18y9lo1Hx8Dc",
+                    "name": "Postgres account"
+                }
+            }
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "1. Webhook: Chat Events": {
+            "main": [
+                [
+                    {
+                        "node": "2. Extract Event Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "2. Extract Event Data": {
+            "main": [
+                [
+                    {
+                        "node": "3. Classify Intent (Keyword)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "3. Classify Intent (Keyword)": {
+            "main": [
+                [
+                    {
+                        "node": "4. Route by Intent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "4. Route by Intent": {
+            "main": [
+                [
+                    {
+                        "node": "5a. Format Escalation Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "6a. Format Compliance Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "7a. Format Sales Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "5a. Format Escalation Email": {
+            "main": [
+                [
+                    {
+                        "node": "5b. Send Escalation Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "6a. Format Compliance Email": {
+            "main": [
+                [
+                    {
+                        "node": "6b. Send Compliance Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "7a. Format Sales Email": {
+            "main": [
+                [
+                    {
+                        "node": "7b. Send Sales Email",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "5b. Send Escalation Email": {
+            "main": [
+                [
+                    {
+                        "node": "5c. Log Escalation Event to DB",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "6b. Send Compliance Email": {
+            "main": [
+                [
+                    {
+                        "node": "6c. Log Compliance Event to DB",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "7b. Send Sales Email": {
+            "main": [
+                [
+                    {
+                        "node": "7c. Prepare Sheet Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "7c. Prepare Sheet Data": {
+            "main": [
+                [
+                    {
+                        "node": "7d. Log to Google Sheets",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "7d. Log to Google Sheets": {
+            "main": [
+                [
+                    {
+                        "node": "7e. Log Sales Event to DB",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": true,
+    "settings": {
+        "executionOrder": "v1",
+        "binaryMode": "separate"
+    },
+    "tags": [],
+    "versionId": "170734f4-5206-4c38-9ffe-6a1e0e1c0592",
+    "meta": {
+        "templateCredsSetupCompleted": true
+    },
+    "id": "FqP2qCswoQ7oibOJ"
+}

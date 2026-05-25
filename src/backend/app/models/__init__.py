@@ -4,6 +4,7 @@ from app.models.chat_thread import ChatThread
 from app.models.user import User
 from app.models.file_attachment import FileAttachment
 from app.models.rag_document import RagDocument
+from app.models.ticket import Ticket
 
-__all__ = ["User", "ChatThread", "ChatMessage", "AuthCredential", "FileAttachment", "RagDocument"]
+__all__ = ["User", "ChatThread", "ChatMessage", "AuthCredential", "FileAttachment", "RagDocument", "Ticket"]
 

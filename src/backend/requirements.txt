@@ -43,7 +43,6 @@ arxiv-mcp-server>=0.1.4
 mcp
 
 # Google integration
-google-sheets-client
 google-api-python-client
 google-auth-httplib2
 google-auth-oauthlib

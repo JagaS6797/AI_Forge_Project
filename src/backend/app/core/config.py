@@ -55,5 +55,11 @@ class Settings(BaseSettings):
     arxiv_mcp_module: str = "arxiv_mcp_server"
     arxiv_mcp_storage_path: str = "./.arxiv-mcp-server"
 
+    # n8n Integration (Project 13)
+    n8n_webhook_url: str = ""
+    n8n_api_key: str = ""
+    n8n_status_webhook_url: Optional[str] = None
+    n8n_timeout_seconds: float = 5.0
+
 
 settings = Settings()

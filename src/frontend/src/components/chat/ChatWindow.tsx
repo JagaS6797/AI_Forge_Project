@@ -158,7 +158,7 @@ export function ChatWindow({ threadId, onThreadNamed }: ChatWindowProps) {
   };
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {isLoadingHistory ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-indigo-500 border-t-transparent" />

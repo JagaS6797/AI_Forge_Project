@@ -26,6 +26,7 @@ from app.services.image_generation_service import (
 )
 from app.services.rag_service import answer_with_rag, thread_has_rag_documents
 from app.services.user_service import get_or_create_user_id
+from app.services.n8n_service import notify_n8n, create_ticket_if_needed
 
 
 logger = logging.getLogger(__name__)
@@ -511,6 +512,32 @@ async def stream_chat_events(
                 await db.rollback()
                 logger.exception("Failed to persist assistant message. Continuing chat stream.")
 
+        # Trigger n8n workflow for support triage (fire-and-forget, non-blocking)
+        if message_text:  # Only if there's a user message
+            # Create ticket in DB if needed (escalation/compliance/sales)
+            try:
+                await create_ticket_if_needed(
+                    db=db,
+                    user_email=user_email,
+                    thread_id=thread_id,
+                    user_message=message_text,
+                    assistant_message=assistant_content,
+                    attachment_ids=attachment_ids or []
+                )
+            except Exception:
+                logger.exception("Failed to create support ticket")
+
+            # Send webhook to n8n for email alerts and logging
+            try:
+                await notify_n8n(
+                    user_email=user_email,
+                    thread_id=thread_id,
+                    user_message=message_text,
+                    assistant_message=assistant_content,
+                    attachment_ids=attachment_ids or []
+                )
+            except Exception:
+                logger.exception("Failed to send n8n webhook")
 
         yield "data: {\"done\": true}\n\n"
     except OpenAIError as exc:

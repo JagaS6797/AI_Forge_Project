@@ -1,0 +1,18 @@
+{
+  "servers": {
+    "arxiv-local": {
+      "command": "py",
+      "args": [
+        "-m",
+        "arxiv_mcp_server",
+        "--storage-path",
+        "${workspaceFolder}/src/backend/.arxiv-mcp-server"
+      ]
+    },
+    "n8n-docs": {
+      "type": "http",
+      "url": "https://n8n.mcp.kapa.ai/"
+    }
+  },
+  "inputs": []
+}   
